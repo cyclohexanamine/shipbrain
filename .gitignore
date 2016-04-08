@@ -1,0 +1,4 @@
+obj/
+buildlog.txt
+linklog.txt
+*.lnk
