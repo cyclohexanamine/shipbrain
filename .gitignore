@@ -1,4 +1,6 @@
 obj/
 buildlog.txt
 linklog.txt
+out.txt
 *.lnk
+

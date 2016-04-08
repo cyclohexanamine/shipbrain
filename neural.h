@@ -3,19 +3,19 @@
 
 #include <string.h>
 #include <math.h>
+#include <random>
 
 /**
-displacement and velocity vectors are relative to the reference frame looking along the nose of the ship, i.e., input 1 is always 0
+positions are done in radial coordinates relative to the nose of the ship
 
  INPUT:
- ship 
-1	orientation [-pi, pi]
-2 	angular velocity [-inf, inf]
- enemy ship
-3	distance [0, inf]
-4	angle to [-pi, pi]
-5	angle [-pi, pi]
-6	angular velocity [-inf, inf]
+enemy ship
+1	r [0, inf]
+2	theta [-pi, pi]
+3	r' [-inf, inf]
+4	theta' [-inf, inf]
+5	orientation [-pi, pi]
+6 	angular velocity [-inf, inf]
 	
 	
  OUTPUT:
@@ -29,13 +29,41 @@ displacement and velocity vectors are relative to the reference frame looking al
 
 **/
 
+#define PI 3.14159265
 
 #define NINPUTS 6
 #define NOUTPUTS 7
-#define PI 3.14159265
+
+#define MutateConnectionsChance = 0.25
+#define PerturbChance = 0.90
+#define CrossoverChance = 0.75
+#define LinkMutationChance = 2.0
+#define NodeMutationChance = 0.50
+#define BiasMutationChance = 0.40
+#define StepSize = 0.1
+#define DisableMutationChance = 0.4
+#define EnableMutationChance = 0.2
+
+/*
+genome.mutationRates["connections"] = MutateConnectionsChance
+genome.mutationRates["link"] = LinkMutationChance
+genome.mutationRates["bias"] = BiasMutationChance
+genome.mutationRates["node"] = NodeMutationChance
+genome.mutationRates["enable"] = EnableMutationChance
+genome.mutationRates["disable"] = DisableMutationChance
+genome.mutationRates["step"] = StepSize
+*/
+
+
+
+
 
 float sigmoid(float f);
 float restrictangle(float a);
+
+float randfloat();
+extern std::default_random_engine generator;
+extern std::uniform_real_distribution<float> distribution;
 
 class Neuron
 {

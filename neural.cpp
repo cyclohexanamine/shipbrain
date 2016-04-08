@@ -13,6 +13,15 @@ float restrictangle(float a)
 	return a;
 }
 
+std::default_random_engine generator;
+std::uniform_real_distribution<float> distribution(0.0,1.0);
+
+float randfloat()
+{
+	return distribution(generator);
+}
+
+
 
 Neuron::Neuron()
 {
@@ -96,17 +105,24 @@ bool* Network::readout()
 
 
 
+Network* mutate(Network* oldnet)
+{
+	
+	
+}
+
+
 
 
 Network* shipmind1() // just turns to face the player and fires continuously
 {
 	Network* ret = new Network(6, 7, 0);
 	
-	ret->neurons[9].connect(&ret->neurons[4], 1.0f); // + rotation for +angle
-	ret->neurons[9].connect(&ret->neurons[2], -2.0f); // + rotation againt +av
+	ret->neurons[9].connect(&ret->neurons[2], 1.0f); // + rotation for +angle
+	ret->neurons[9].connect(&ret->neurons[4], 2.0f); // + rotation againt +av
 	
-	ret->neurons[10].connect(&ret->neurons[4], -1.0f); // same as ^ for - rotation
-	ret->neurons[10].connect(&ret->neurons[2], 2.0f);
+	ret->neurons[10].connect(&ret->neurons[2], -1.0f); // same as ^ for - rotation
+	ret->neurons[10].connect(&ret->neurons[4], -2.0f);
 	
 	ret->neurons[13].connect(&ret->neurons[0], 1.0f); // bias to fire
 	
@@ -117,17 +133,17 @@ Network* shipmind2() // turns to face the player and fires when it's aiming at t
 {
 	Network* ret = new Network(6, 7, 2);
 	
-	ret->neurons[9].connect(&ret->neurons[4], 1.0f); // + rotation for +angle
-	ret->neurons[9].connect(&ret->neurons[2], -2.0f); // + rotation againt +av
+	ret->neurons[9].connect(&ret->neurons[2], 1.0f); // + rotation for +angle
+	ret->neurons[9].connect(&ret->neurons[4], 2.0f); // + rotation againt +av
 	
-	ret->neurons[10].connect(&ret->neurons[4], -1.0f); // same as ^ for - rotation
-	ret->neurons[10].connect(&ret->neurons[2], 2.0f);
+	ret->neurons[10].connect(&ret->neurons[2], -1.0f); // same as ^ for - rotation
+	ret->neurons[10].connect(&ret->neurons[4], -2.0f);
 	
 	
-	ret->neurons[14].connect(&ret->neurons[4], -10);
+	ret->neurons[14].connect(&ret->neurons[2], -10);
 	ret->neurons[14].connect(&ret->neurons[0], 2); // angle < 0.1
 	
-	ret->neurons[15].connect(&ret->neurons[4], 10);
+	ret->neurons[15].connect(&ret->neurons[2], 10);
 	ret->neurons[15].connect(&ret->neurons[0], 2); // angle > -0.1
 	
 	ret->neurons[13].connect(&ret->neurons[14], 1.0f); // fire on AND

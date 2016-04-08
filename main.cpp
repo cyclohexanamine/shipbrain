@@ -19,6 +19,8 @@
 
 #define sv2 sf::Vector2f
 
+#define nosev cpv(0.5, 3)
+
 cpVect cpvrotate(cpVect v, float a)
 {
 	return cpvrotate(v, cpvforangle(a));
@@ -205,23 +207,32 @@ class Phys
 		return 0;
 	}
 	
+
 	int update_brain(Ship* s)
 	{
 		float* inputs = new float[NINPUTS];
-		inputs[0] = 0;
-		inputs[1] = cpBodyGetAngularVelocity(s->body);
 		
 		Ship* target = &*ship_list.begin();
-		cpVect rpos = cpBodyGetPosition(target->body) - cpBodyGetPosition(s->body);
 		float noseang = cpBodyGetAngle(s->body) + s->nose_angle;
+		cpVect rpos = cpBodyGetPosition(target->body) - cpBodyGetPosition(s->body);
 		
-		inputs[2] = cpvlength(rpos);
-		inputs[3] = restrictangle(cpvtoangle(rpos) - noseang);
+		inputs[0] = cpvlength(rpos);
+		inputs[1] = restrictangle(cpvtoangle(rpos)-noseang);
+		
+		cpVect rvel = cpBodyGetVelocity(target->body) - cpBodyGetVelocity(s->body);
+		
+		inputs[2] = (rpos.x * rvel.x + rpos.y * rvel.y)/inputs[0];
+		inputs[3] = (rpos.x * rvel.y - rpos.y * rvel.x)/(inputs[0]*inputs[0]) - cpBodyGetAngularVelocity(s->body);
+		
 		inputs[4] = restrictangle(cpBodyGetAngle(target->body) + target->nose_angle - noseang);
-		inputs [5] = cpBodyGetAngularVelocity(target->body);
+		inputs[5] = cpBodyGetAngularVelocity(target->body);
+		
+		afout << rpos.x << ", " << rpos.y << std::endl;
+		afout << rvel.x << ", " << rvel.y << std::endl;
 		
 		s->brain->update(inputs);
 		
+		delete inputs;		
 		return 0;
 	}
 	
@@ -272,10 +283,10 @@ class Phys
 		
 		if (keylist[6] && last_time_updated - s->last_fired > 1)
 		{			
-			cpVect tip = cpBodyLocalToWorld(s->body, cpv(0.5, 3.1));
+			cpVect tip = cpBodyLocalToWorld(s->body, nosev + cpv(0, 0.1));
 			cpVect base = cpBodyLocalToWorld(s->body, cpv(0.5, 0));
 			
-			cpVect newvel = cpvnormalize(tip - base) * shell_muzzle_vel + cpBodyGetVelocityAtLocalPoint(s->body, cpv(0.5, 3));
+			cpVect newvel = cpvnormalize(tip - base) * shell_muzzle_vel + cpBodyGetVelocityAtLocalPoint(s->body, nosev);
 			Shell* newshell = addshell(tip, newvel, cpBodyGetAngle(s->body));
 			cpBodyApplyImpulseAtLocalPoint(s->body, cpv(0, -1)*cpBodyGetMass(newshell->body)*shell_muzzle_vel, cpv(0.5, 3));
 			
