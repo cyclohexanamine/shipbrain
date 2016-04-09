@@ -6,6 +6,7 @@
 #include <time.h>
 #include <random>
 #include <algorithm>
+#include <fstream>
 
 /**
 positions are done in radial coordinates relative to the nose of the ship
@@ -119,7 +120,7 @@ class Genome
 {
 	public:
 	
-	Genome(int n_i, int n_o);
+	Genome(int n_i, int n_o, int n_h=0, int ng=0);
 	Genome* copy();
 	void addgene(int n_in, int n_out, float weight, bool enabled=true);
 	
@@ -134,11 +135,8 @@ class Genome
 };
 
 Genome* mutate(Genome* oldg);
-
-
-
-Genome* shipmind();
-Genome* shipmind2();
+void writegenome(Genome* g, const char* fname);
+Genome* readgenome(const char* fname);
 
 
 #endif

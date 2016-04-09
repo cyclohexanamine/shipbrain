@@ -97,7 +97,7 @@ class Ship
 		score = 0;
 		if (ng == 0)
 		{
-			Genome* braingenome = mutate(shipmind());
+			Genome* braingenome = mutate(readgenome("shipmind.mind"));
 			brain = braingenome->makenetwork();
 			delete braingenome;
 		}
@@ -165,7 +165,7 @@ static cpBool scorecollision(cpArbiter *arb, cpSpace *space, void *data)
 		s = (Ship*)cpShapeGetUserData(*b);
 	
 	s->score -= 1;
-	s->target->score += 2;
+	s->target->score += 1;
 	
 	return cpTrue;
 }
@@ -569,57 +569,12 @@ Scores evaluate(Genome* g1, Genome* g2, float t_max, float tstep)
 }
 
 
-int main()
-{
-	afout.open("out.txt");
-	wclock = new sf::Clock;
-	
-	float t_max = 60;
-	float tstep = 1./60.;
-	
-	int ngenerations = 5;
-	int npop = 10;
-	
-	Genome* best;
-	Genome** population = new Genome*[npop];
-	for (int i = 0; i < npop; i++)
-		population[i] = mutate(shipmind());
-	Score* scores = new Score[npop];
-	
-	for (int gn = 0; gn < ngenerations; gn++)
-	{
-		std::cout << gn << std::endl;
-		
-		for (int i = 0; i < npop/2; i++)
-		{
-			Scores s = evaluate(population[i], population[npop/2+i], t_max, tstep);
-			scores[i] = {i, s.s1};
-			scores[npop/2+i] = {npop/2+i, s.s2};
-		}
-		
-		qsort(scores, npop, sizeof(Score), scorecomp);
-		Genome* p1 = population[scores[0].n];
-		Genome* p2 = population[scores[1].n];
-		
-		afout << std::endl <<  "Generation " << gn << std::endl;
-		for (int i = 0; i < npop; i++)
-		{
-			afout << scores[i].s << std::endl;
-		}
-		
-		for (int i = 0; i < npop/2; i++)
-		{
-			population[2*i] = mutate(p1);
-			population[2*i+1] = mutate(p2);
-		}
-		
-		
-		best = p1;
-	}
 
-	Phys phys; phys.init(best);
+int openwindow(Genome* g1=0, Genome* g2=0)
+{
+	Phys phys; phys.init(g1, g2);
 	Rend rend; rend.init();
-	
+
     while (rend.window->isOpen())
     {
         sf::Event event;
@@ -646,51 +601,73 @@ int main()
 		rend.render(&phys);
 		
     }
-	
-	return 0;
 
+    return 0;
+}
+
+
+int main()
+{
+	afout.open("out.txt");
+	wclock = new sf::Clock;
+	
+	float t_max = 60;
+	float tstep = 1./60.;
+	
+	int ngenerations = 5;
+	int npop = 10;
+	
+	Genome* best;
+	Genome* prev1, * prev2;
+	prev1 = readgenome("shipmind.mind"); prev2 = readgenome("shipmind.mind");
+	Genome** population = new Genome*[npop];
+	for (int i = 0; i < npop; i++)
+		population[i] = mutate(readgenome("shipmind.mind"));
+	Score* scores = new Score[npop];
+	
+	for (int gn = 0; gn < ngenerations; gn++)
+	{
+		std::cout << gn << std::endl;
+		
+		for (int i = 0; i < npop; i++)
+		{
+			Scores s1 = evaluate(population[i], prev1, t_max, tstep);
+			Scores s2 = evaluate(population[i], prev2, t_max, tstep);
+			scores[i] = {i, s1.s1+s2.s1};
+		}
+		
+		qsort(scores, npop, sizeof(Score), scorecomp);
+		prev1 = population[scores[0].n];
+		prev2 = population[scores[1].n];
+		
+		afout << std::endl <<  "Generation " << gn << std::endl;
+		for (int i = 0; i < npop; i++)
+		{
+			afout << scores[i].s << std::endl;
+		}
+		
+		for (int i = 0; i < npop/2; i++)
+		{
+			population[2*i] = mutate(prev1);
+			population[2*i+1] = mutate(prev2);
+		}
+		
+		best = prev1;
+	}
+
+	writegenome(best, "best.mind");
+	return openwindow(best);
 }
 
 
 // int main()
 // {
 	// afout.open("out.txt");
-	
 	// wclock = new sf::Clock;
 	
-	// Genome* g1 = mutate(shipmind());
-	// Genome* g2 = mutate(shipmind());
+	// Genome* g1 = readgenome("best.mind");
+	// Genome* g2 = readgenome("shipmind.mind");
 	
-	// Phys phys; phys.init(g1, g2);
-	// Rend rend; rend.init();
-
-    // while (rend.window->isOpen())
-    // {
-        // sf::Event event;
-        // while (rend.window->pollEvent(event))
-        // {
-			// switch (event.type)
-			// {
-				// case sf::Event::Closed:
-				// {
-					// rend.window->close();
-					// afout.close();
-					// break;
-				// }
-				// case sf::Event::MouseWheelScrolled:
-				// {
-					// rend.mouse_wheel = event.mouseWheelScroll.delta;
-					// break;
-				// }
-				// default: break;
-			// }
-        // }
-		
-		// phys.update();
-		// rend.render(&phys);
-		
-    // }
-
-    // return 0;
+	// return openwindow(g1, g2);
 // }
 

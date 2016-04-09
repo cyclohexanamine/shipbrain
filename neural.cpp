@@ -112,13 +112,14 @@ bool* Network::readout()
 	return out;
 }
 
-Genome::Genome(int n_i, int n_o)
+Genome::Genome(int n_i, int n_o, int n_h, int ng)
 {
 	n_input = n_i;
 	n_output = n_o;
-	n_hidden = 0;
-	ngenes = 0;
-	genes = 0;
+	n_hidden = n_h;
+	ngenes = ng;
+	if (ng==0) genes = 0;
+	else genes = new Gene[ng];
 }
 
 Genome* Genome::copy()
@@ -140,7 +141,7 @@ void Genome::addgene(int n_in, int n_out, float weight, bool enabled)
 	delete genes;
 	genes = newgl;
 	
-	int topn = std::max(n_in, n_out) - n_input + n_output + n_hidden;
+	int topn = std::max(n_in, n_out) - (n_input + n_output + n_hidden);
 	if (topn > 0)
 		n_hidden += topn;
 	
@@ -175,46 +176,29 @@ Genome* mutate(Genome* oldg)
 	return ng;
 }
 
-
-
-
-
-Genome* shipmind()
+void writegenome(Genome* g, const char* fname)
 {
-	Genome* g = new Genome(6, 7);
-	
-	g->addgene(2, 9, 1.);
-	g->addgene(4, 9, 2.);
-	g->addgene(2, 10, -1.);
-	g->addgene(4, 10, -2.);
-	
-	g->addgene(2, 14, -10.);
-	g->addgene(0, 14, 2.);	
-	g->addgene(2, 15, 10.);
-	g->addgene(0, 15, 2.);
-	
-	g->addgene(0, 13, 1.0);
-	
+	std::ofstream fout;
+	fout.open(fname);
+	fout << g->n_input << " " << g->n_output << " " << g->n_hidden << std::endl;
+	fout << g->ngenes << std::endl;
+	for (int i = 0; i < g->ngenes; i++)
+		fout << g->genes[i].in << " " << g->genes[i].out << " " << g->genes[i].weight << " " << g->genes[i].enabled << std::endl;
+	fout.close();
+}
+
+Genome* readgenome(const char* fname)
+{
+	std::ifstream fin;
+	fin.open(fname);
+	int n_i, n_o, n_h, ng;
+	fin >> n_i >> n_o >> n_h >> ng;
+	Genome* g = new Genome(n_i, n_o, n_h, ng);
+	for (int i = 0; i < ng; i++)
+		fin >> g->genes[i].in >> g->genes[i].out >> g->genes[i].weight >> g->genes[i].enabled;
+	fin.close();
 	return g;
 }
 
-Genome* shipmind2()
-{
-	Genome* g = new Genome(6, 7);
-	
-	g->addgene(2, 9, 1.);
-	g->addgene(4, 9, 2.);
-	g->addgene(2, 10, -1.);
-	g->addgene(4, 10, -2.);
-	
-	g->addgene(2, 14, -10.);
-	g->addgene(0, 14, 2.);	
-	g->addgene(2, 15, 10.);
-	g->addgene(0, 15, 2.);
-	
-	g->addgene(14, 13, 1.);
-	g->addgene(15, 13, 1.);
-	g->addgene(0, 13, -1.2);
-	
-	return g;
-}
+
+
