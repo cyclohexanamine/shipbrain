@@ -3,7 +3,9 @@
 
 #include <string.h>
 #include <math.h>
+#include <time.h>
 #include <random>
+#include <algorithm>
 
 /**
 positions are done in radial coordinates relative to the nose of the ship
@@ -34,15 +36,15 @@ enemy ship
 #define NINPUTS 6
 #define NOUTPUTS 7
 
-#define MutateConnectionsChance = 0.25
-#define PerturbChance = 0.90
-#define CrossoverChance = 0.75
-#define LinkMutationChance = 2.0
-#define NodeMutationChance = 0.50
-#define BiasMutationChance = 0.40
-#define StepSize = 0.1
-#define DisableMutationChance = 0.4
-#define EnableMutationChance = 0.2
+#define MutateConnectionsChance 0.25
+#define PerturbChance 0.90
+#define CrossoverChance 0.75
+#define LinkMutationChance 2.0
+#define NodeMutationChance 0.50
+#define BiasMutationChance 0.40
+#define StepSize 0.1
+#define DisableMutationChance 0.4
+#define EnableMutationChance 0.2
 
 /*
 genome.mutationRates["connections"] = MutateConnectionsChance
@@ -61,9 +63,12 @@ genome.mutationRates["step"] = StepSize
 float sigmoid(float f);
 float restrictangle(float a);
 
+extern bool init_rand;
+extern std::mt19937 device;
+extern std::uniform_real_distribution<double> distribution;
 float randfloat();
-extern std::default_random_engine generator;
-extern std::uniform_real_distribution<float> distribution;
+
+
 
 class Neuron
 {
@@ -90,8 +95,8 @@ class Network
 	
 	Neuron* neurons;
 	int n_input;
-	int n_hidden;
 	int n_output;
+	int n_hidden;
 	
 	void update(float* inputs);
 	
@@ -100,11 +105,40 @@ class Network
 	bool* readout();
 };
 
+class Gene
+{
+	public:
+	
+	int in;
+	int out;
+	float weight;
+	bool enabled;
+};
+
+class Genome
+{
+	public:
+	
+	Genome(int n_i, int n_o);
+	Genome* copy();
+	void addgene(int n_in, int n_out, float weight, bool enabled=true);
+	
+	int n_input;
+	int n_output;
+	int n_hidden;
+	
+	int ngenes;
+	Gene* genes;
+	
+	Network* makenetwork();
+};
+
+Genome* mutate(Genome* oldg);
 
 
-Network* shipmind1();
-Network* shipmind2();
 
+Genome* shipmind();
+Genome* shipmind2();
 
 
 #endif

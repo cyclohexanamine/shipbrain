@@ -13,12 +13,21 @@ float restrictangle(float a)
 	return a;
 }
 
-std::default_random_engine generator;
-std::uniform_real_distribution<float> distribution(0.0,1.0);
 
+
+
+bool init_rand = false;
+std::mt19937 device;
+std::uniform_real_distribution<double> distribution(0, 1);
 float randfloat()
 {
-	return distribution(generator);
+	if (!init_rand)
+	{
+		device.seed(time(0));
+		init_rand = true;
+	}
+	
+	return (float)distribution(device);
 }
 
 
@@ -103,54 +112,109 @@ bool* Network::readout()
 	return out;
 }
 
-
-
-Network* mutate(Network* oldnet)
+Genome::Genome(int n_i, int n_o)
 {
-	
-	
+	n_input = n_i;
+	n_output = n_o;
+	n_hidden = 0;
+	ngenes = 0;
+	genes = 0;
+}
+
+Genome* Genome::copy()
+{
+	Genome* ret = new Genome(n_input, n_output);
+	ret->n_hidden = n_hidden;
+	ret->ngenes = ngenes;
+	ret->genes = new Gene[ngenes];
+	memcpy(ret->genes, genes, ngenes*sizeof(Gene));
+	return ret;
 }
 
 
-
-
-Network* shipmind1() // just turns to face the player and fires continuously
+void Genome::addgene(int n_in, int n_out, float weight, bool enabled)
 {
-	Network* ret = new Network(6, 7, 0);
+	Gene* newgl = new Gene[ngenes+1];
+	memcpy(newgl, genes, ngenes*sizeof(Gene));
+	newgl[ngenes] = {n_in, n_out, weight, enabled};
+	delete genes;
+	genes = newgl;
 	
-	ret->neurons[9].connect(&ret->neurons[2], 1.0f); // + rotation for +angle
-	ret->neurons[9].connect(&ret->neurons[4], 2.0f); // + rotation againt +av
+	int topn = std::max(n_in, n_out) - n_input + n_output + n_hidden;
+	if (topn > 0)
+		n_hidden += topn;
 	
-	ret->neurons[10].connect(&ret->neurons[2], -1.0f); // same as ^ for - rotation
-	ret->neurons[10].connect(&ret->neurons[4], -2.0f);
-	
-	ret->neurons[13].connect(&ret->neurons[0], 1.0f); // bias to fire
+	ngenes++;
+}
+
+Network* Genome::makenetwork()
+{
+	Network* ret = new Network(n_input, n_output, n_hidden);
+	for (int i = 0; i < ngenes; i++)
+	{
+		if (!genes[i].enabled) continue;
+		ret->neurons[genes[i].out].connect(&ret->neurons[genes[i].in], genes[i].weight);
+	}
 	
 	return ret;
 }
 
-Network* shipmind2() // turns to face the player and fires when it's aiming at the player
+
+Genome* mutate(Genome* oldg)
 {
-	Network* ret = new Network(6, 7, 2);
+	Genome* ng = oldg->copy();
+	if (true) // (randfloat() < MutateConnectionsChance
+	for (int i = 0; i < ng->ngenes; i++)
+	{
+		if (randfloat() < PerturbChance)
+			ng->genes[i].weight += (2*randfloat()-1) * StepSize;
+		else
+			ng->genes[i].weight = 4*randfloat() - 2;
+	}
 	
-	ret->neurons[9].connect(&ret->neurons[2], 1.0f); // + rotation for +angle
-	ret->neurons[9].connect(&ret->neurons[4], 2.0f); // + rotation againt +av
-	
-	ret->neurons[10].connect(&ret->neurons[2], -1.0f); // same as ^ for - rotation
-	ret->neurons[10].connect(&ret->neurons[4], -2.0f);
-	
-	
-	ret->neurons[14].connect(&ret->neurons[2], -10);
-	ret->neurons[14].connect(&ret->neurons[0], 2); // angle < 0.1
-	
-	ret->neurons[15].connect(&ret->neurons[2], 10);
-	ret->neurons[15].connect(&ret->neurons[0], 2); // angle > -0.1
-	
-	ret->neurons[13].connect(&ret->neurons[14], 1.0f); // fire on AND
-	ret->neurons[13].connect(&ret->neurons[15], 1.0f);
-	ret->neurons[13].connect(&ret->neurons[0], -1.2f);
-	
-	
-	return ret;
+	return ng;
 }
 
+
+
+
+
+Genome* shipmind()
+{
+	Genome* g = new Genome(6, 7);
+	
+	g->addgene(2, 9, 1.);
+	g->addgene(4, 9, 2.);
+	g->addgene(2, 10, -1.);
+	g->addgene(4, 10, -2.);
+	
+	g->addgene(2, 14, -10.);
+	g->addgene(0, 14, 2.);	
+	g->addgene(2, 15, 10.);
+	g->addgene(0, 15, 2.);
+	
+	g->addgene(0, 13, 1.0);
+	
+	return g;
+}
+
+Genome* shipmind2()
+{
+	Genome* g = new Genome(6, 7);
+	
+	g->addgene(2, 9, 1.);
+	g->addgene(4, 9, 2.);
+	g->addgene(2, 10, -1.);
+	g->addgene(4, 10, -2.);
+	
+	g->addgene(2, 14, -10.);
+	g->addgene(0, 14, 2.);	
+	g->addgene(2, 15, 10.);
+	g->addgene(0, 15, 2.);
+	
+	g->addgene(14, 13, 1.);
+	g->addgene(15, 13, 1.);
+	g->addgene(0, 13, -1.2);
+	
+	return g;
+}
