@@ -6,6 +6,8 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <string>
+#include <windows.h>
 
 #include "neural.h"
 
@@ -20,6 +22,9 @@
 #define sv2 sf::Vector2f
 
 #define nosev cpv(0.5, 3)
+
+#define TMAX 60.
+#define TSTEP 1./60.
 
 cpVect cpvrotate(cpVect v, float a)
 {
@@ -39,6 +44,82 @@ float gtime()
 {
 	return wclock->getElapsedTime().asSeconds();
 }
+
+
+
+int DeleteDirectory(const std::string &refcstrRootDirectory,
+                    bool              bDeleteSubdirectories = true)
+{
+  bool            bSubdirectory = false;       // Flag, indicating whether
+                                               // subdirectories have been found
+  HANDLE          hFile;                       // Handle to directory
+  std::string     strFilePath;                 // Filepath
+  std::string     strPattern;                  // Pattern
+  WIN32_FIND_DATA FileInformation;             // File information
+
+
+  strPattern = refcstrRootDirectory + "\\*.*";
+  hFile = ::FindFirstFile(strPattern.c_str(), &FileInformation);
+  if(hFile != INVALID_HANDLE_VALUE)
+  {
+    do
+    {
+      if(FileInformation.cFileName[0] != '.')
+      {
+        strFilePath.erase();
+        strFilePath = refcstrRootDirectory + "\\" + FileInformation.cFileName;
+
+        if(FileInformation.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+          if(bDeleteSubdirectories)
+          {
+            // Delete subdirectory
+            int iRC = DeleteDirectory(strFilePath, bDeleteSubdirectories);
+            if(iRC)
+              return iRC;
+          }
+          else
+            bSubdirectory = true;
+        }
+        else
+        {
+          // Set file attributes
+          if(::SetFileAttributes(strFilePath.c_str(),
+                                 FILE_ATTRIBUTE_NORMAL) == FALSE)
+            return ::GetLastError();
+
+          // Delete file
+          if(::DeleteFile(strFilePath.c_str()) == FALSE)
+            return ::GetLastError();
+        }
+      }
+    } while(::FindNextFile(hFile, &FileInformation) == TRUE);
+
+    // Close handle
+    ::FindClose(hFile);
+
+    DWORD dwError = ::GetLastError();
+    if(dwError != ERROR_NO_MORE_FILES)
+      return dwError;
+    else
+    {
+      if(!bSubdirectory)
+      {
+        // Set directory attributes
+        if(::SetFileAttributes(refcstrRootDirectory.c_str(),
+                               FILE_ATTRIBUTE_NORMAL) == FALSE)
+          return ::GetLastError();
+
+        // Delete directory
+        if(::RemoveDirectory(refcstrRootDirectory.c_str()) == FALSE)
+          return ::GetLastError();
+      }
+    }
+  }
+
+  return 0;
+}
+
 
 
 
@@ -164,8 +245,8 @@ static cpBool scorecollision(cpArbiter *arb, cpSpace *space, void *data)
 	else
 		s = (Ship*)cpShapeGetUserData(*b);
 	
-	s->score -= 1;
-	s->target->score += 1;
+	// s->score -= 1;
+	s->target->score += 2;
 	
 	return cpTrue;
 }
@@ -182,6 +263,7 @@ class Phys
 
 	float last_time_updated;
 	float dt;
+	bool paused; float last_pressed;
 	
 	float* last_frame_deltas;
 	
@@ -190,7 +272,8 @@ class Phys
 		ship_list.clear();
 		space = cpSpaceNew();
 		last_time_updated = gtime();
-		dt = 1;
+		dt = 1.;
+		paused = 0; last_pressed = 0;
 		
 		cpCollisionHandler *handler = cpSpaceAddCollisionHandler(space, 1, 2);
 		handler->beginFunc = scorecollision;
@@ -201,45 +284,7 @@ class Phys
 		return 0;
 	}
 	
-	int init()
-	{
-		maininit();
-
-		cpVect vl[4] = {cpv(0, 0), cpv(1, 0), cpv(0.7, 3), cpv(0.3, 3)};
-		Ship* s = addship(sizeof(vl)/sizeof(cpVect), vl, cpv(0, 0));
-		s->player = true;
-
-		// cpBodySetVelocity(s->body, cpv(1, 1));
-		cpBodySetAngularVelocity(s->body, 0);
-					
-		cpVect vl2[4] = {cpv(0, 0), cpv(1, 0), cpv(0.7, 3), cpv(0.3, 3)};
-		Ship* s2 = addship(sizeof(vl2)/sizeof(cpVect), vl2, cpv(20, 0));
-		cpBodySetAngularVelocity(s2->body, 0);
-		
-		s->target = s2;
-		s2->target = s;
-		
-		return 0;
-	}
-	
-	int init(Genome* g1)
-	{
-		maininit();
-		
-		cpVect vl[4] = {cpv(0, 0), cpv(1, 0), cpv(0.7, 3), cpv(0.3, 3)};
-		Ship* s = addship(sizeof(vl)/sizeof(cpVect), vl, cpv(0, 0));
-		s->player = true;
-					
-		cpVect vl2[4] = {cpv(0, 0), cpv(1, 0), cpv(0.7, 3), cpv(0.3, 3)};
-		Ship* s2 = addship(sizeof(vl2)/sizeof(cpVect), vl2, cpv(20, 0), g1);
-		
-		s->target = s2;
-		s2->target = s;
-		
-		return 0;
-	}	
-	
-	int init(Genome* g1, Genome* g2)
+	int init(Genome* g1=0, Genome* g2=0)
 	{
 		maininit();
 		
@@ -248,6 +293,7 @@ class Phys
 					
 		cpVect vl2[4] = {cpv(0, 0), cpv(1, 0), cpv(0.7, 3), cpv(0.3, 3)};
 		Ship* s2 = addship(sizeof(vl2)/sizeof(cpVect), vl2, cpv(20, 0), g2);
+		if (g2==0) s2->player = true;
 		
 		s->target = s2;
 		s2->target = s;
@@ -538,21 +584,6 @@ struct Scores
 {
 	int s1, s2;
 };
-struct Score
-{
-	int n, s;
-};
-int scorecomp(const void* as1, const void* as2)
-{
-	Score* s1 = (Score*)as1;
-	Score* s2 = (Score*)as2;
-	
-	if (s1->s < s2->s) return 1;
-	if (s1->s == s2->s) return 0;
-	if (s1->s > s2->s) return -1;
-	return 0;
-}
-
 Scores evaluate(Genome* g1, Genome* g2, float t_max, float tstep)
 {
 	Phys phys; phys.init(g1, g2);
@@ -566,6 +597,12 @@ Scores evaluate(Genome* g1, Genome* g2, float t_max, float tstep)
 	int s2 = (*phys.ship_list.rbegin())->score;
 	
 	return {s1, s2};
+}
+
+int evaluate(Genome* g1)
+{
+	Scores sc = evaluate(g1, readgenome("shipmind.mind"), TMAX, TSTEP);
+	return sc.s1;
 }
 
 
@@ -585,7 +622,6 @@ int openwindow(Genome* g1=0, Genome* g2=0)
 				case sf::Event::Closed:
 				{
 					rend.window->close();
-					afout.close();
 					break;
 				}
 				case sf::Event::MouseWheelScrolled:
@@ -593,11 +629,24 @@ int openwindow(Genome* g1=0, Genome* g2=0)
 					rend.mouse_wheel = event.mouseWheelScroll.delta;
 					break;
 				}
+				case sf::Event::KeyPressed:
+				{
+					if (event.key.code == sf::Keyboard::Key::P && gtime() - phys.last_pressed > 0.3)
+						phys.paused = !phys.paused;
+					break;
+				}
 				default: break;
 			}
         }
 		
-		phys.update();
+		if (phys.paused)
+		{
+			phys.last_time_updated = gtime();
+		}
+		else
+		{
+			phys.update();
+		}
 		rend.render(&phys);
 		
     }
@@ -610,64 +659,59 @@ int main()
 {
 	afout.open("out.txt");
 	wclock = new sf::Clock;
+	DeleteDirectory("arch");
 	
-	float t_max = 60;
-	float tstep = 1./60.;
 	
-	int ngenerations = 5;
-	int npop = 10;
+	bool init_selection = true;
 	
-	Genome* best;
-	Genome* prev1, * prev2;
-	prev1 = readgenome("shipmind.mind"); prev2 = readgenome("shipmind.mind");
-	Genome** population = new Genome*[npop];
-	for (int i = 0; i < npop; i++)
-		population[i] = mutate(readgenome("shipmind.mind"));
-	Score* scores = new Score[npop];
-	
-	for (int gn = 0; gn < ngenerations; gn++)
+	if (init_selection)
 	{
-		std::cout << gn << std::endl;
 		
-		for (int i = 0; i < npop; i++)
+		int ngenerations = 100;
+		
+		int ngs = 2;
+		Genome** gs = new Genome*[ngs];
+		gs[0] = readgenome("shipmind.mind");
+		gs[1] = readgenome("shipmind2.mind");
+		
+		Population* pop = new Population(gs, ngs);
+
+		for (int gen = 0; gen < ngenerations; gen++)
 		{
-			Scores s1 = evaluate(population[i], prev1, t_max, tstep);
-			Scores s2 = evaluate(population[i], prev2, t_max, tstep);
-			scores[i] = {i, s1.s1+s2.s1};
+			pop->calcfitness(evaluate);
+			
+			std::cout << std::endl << "Generation " << gen+1 << std::endl;
+			for (int i = 0; i < pop->nspecies; i++)
+			{
+				std::cout << pop->species[i]->topfitness << " " << pop->species[i]->avgfitness << " " << pop->species[i]->staleness << " " << pop->species[i]->ngenomes << std::endl;
+				
+				char* str = new char[30];
+				for (int j = 0; j < 3; j++)
+				{
+					if (pop->species[i]->ngenomes <= j) break;
+					CreateDirectory("arch", NULL);
+					sprintf(str, "arch\\gen%d", gen);
+					CreateDirectory(str, NULL);
+					sprintf(str, "arch\\gen%d\\species%d", gen, i);
+					CreateDirectory(str, NULL);
+					sprintf(str, "arch\\gen%d\\species%d\\mind%d.mind", gen, i, j);
+					writegenome(pop->species[i]->genomes[j], str);
+				}
+				delete str;
+			}				
+			
+			pop->nextgen();
 		}
 		
-		qsort(scores, npop, sizeof(Score), scorecomp);
-		prev1 = population[scores[0].n];
-		prev2 = population[scores[1].n];
-		
-		afout << std::endl <<  "Generation " << gn << std::endl;
-		for (int i = 0; i < npop; i++)
-		{
-			afout << scores[i].s << std::endl;
-		}
-		
-		for (int i = 0; i < npop/2; i++)
-		{
-			population[2*i] = mutate(prev1);
-			population[2*i+1] = mutate(prev2);
-		}
-		
-		best = prev1;
+		return 0;
 	}
-
-	writegenome(best, "best.mind");
-	return openwindow(best);
+	
+	else
+	{		
+		Genome* g1 = readgenome("mind0.mind");
+		Genome* g2 = readgenome("shipmind.mind");
+		
+		return openwindow(g1, g2);
+	}
 }
-
-
-// int main()
-// {
-	// afout.open("out.txt");
-	// wclock = new sf::Clock;
-	
-	// Genome* g1 = readgenome("best.mind");
-	// Genome* g2 = readgenome("shipmind.mind");
-	
-	// return openwindow(g1, g2);
-// }
 

@@ -4,3 +4,6 @@ linklog.txt
 out.txt
 *.lnk
 
+**/arch/**
+*.mind
+mindarchive
