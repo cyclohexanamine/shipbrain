@@ -3,11 +3,8 @@
 #include <chipmunk/chipmunk.h>
 #include <chipmunk/chipmunk_private.h>
 
-#include <iostream>
-#include <fstream>
 #include <vector>
 #include <string>
-#include <windows.h>
 
 #include "neural.h"
 
@@ -743,30 +740,8 @@ int main(int argc, char* argv[])
 		for (int gen = 0; gen < ngenerations; gen++)
 		{
 			pop->calcfitness(evaluate);
-			
-			std::cout << std::endl << "Generation " << gen+1 << std::endl;
-			for (int i = 0; i < pop->nspecies; i++)
-			{
-				std::cout << pop->species[i]->topfitness << " " << pop->species[i]->avgfitness << " " << pop->species[i]->staleness << " " << pop->species[i]->ngenomes << std::endl;
-				
-				if (record)
-				{
-					char* str = new char[30];
-					for (int j = 0; j < 3; j++)
-					{
-						if (pop->species[i]->ngenomes <= j) break;
-						CreateDirectory("arch", NULL);
-						sprintf(str, "arch\\gen%d", gen);
-						CreateDirectory(str, NULL);
-						sprintf(str, "arch\\gen%d\\species%d", gen, i);
-						CreateDirectory(str, NULL);
-						sprintf(str, "arch\\gen%d\\species%d\\mind%d.mind", gen, i, j);
-						writegenome(pop->species[i]->genomes[j], str);
-					}
-					delete str;
-				}
-			}				
-			
+			pop->printspecies();
+			if (record) pop->savegeneration();
 			pop->nextgen();
 		}
 		

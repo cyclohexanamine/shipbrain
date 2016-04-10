@@ -187,6 +187,7 @@ Population::Population(Genome** genomes, int ngenomes)
 	nspecies = 0;
 	species = 0;
 	globalfitness = 0;
+	generation = 0;
 	
 	Genome** newgs = new Genome*[NPOP];
 	for (int i = 0; i < NPOP; i++)
@@ -297,6 +298,37 @@ void Population::nextgen()
 	}
 	
 	addtospecies(children, nchildren);
+	
+	generation++;
+}
+
+void Population::printspecies()
+{
+	std::cout << std::endl << "Generation " << generation << std::endl;
+	for (int i = 0; i < nspecies; i++)
+	{
+		std::cout << species[i]->topfitness << " " << species[i]->avgfitness << " " << species[i]->staleness << " " << species[i]->ngenomes << std::endl;
+	}
+}
+
+void Population::savegeneration()
+{
+	for (int i = 0; i < nspecies; i++)
+	{
+		char* str = new char[30];
+		for (int j = 0; j < 3; j++)
+		{
+			if (species[i]->ngenomes <= j) break;
+			CreateDirectory("arch", NULL);
+			sprintf(str, "arch\\gen%d", generation);
+			CreateDirectory(str, NULL);
+			sprintf(str, "arch\\gen%d\\species%d", generation, i);
+			CreateDirectory(str, NULL);
+			sprintf(str, "arch\\gen%d\\species%d\\mind%d.mind", generation, i, j);
+			writegenome(species[i]->genomes[j], str);
+		}
+		delete str;
+	}
 }
 
 

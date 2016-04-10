@@ -6,8 +6,10 @@
 #include <time.h>
 #include <random>
 #include <algorithm>
+#include <iostream>
 #include <fstream>
 #include <climits>
+#include <windows.h>
 
 /**
 positions are done in radial coordinates relative to the nose of the ship
@@ -208,8 +210,12 @@ class Population
 	
 	int globalfitness;
 	
+	int generation;
+	
 	void calcfitness(int (*evalfitness)(Genome*));
 	void nextgen();
+	void printspecies();
+	void savegeneration();
 };
 
 
