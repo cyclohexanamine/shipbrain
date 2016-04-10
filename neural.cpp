@@ -43,34 +43,7 @@ int randint(int min, int max)
 	return uni(device);
 }
 
-template<typename T> void listappend(T*& list, int& listsize, T item)
-{
-	T* newl = new T[listsize+1];
-	if (list)
-	{
-		memcpy(newl, list, listsize*sizeof(T));
-		delete list;
-	}
-	newl[listsize] = item;
-	list = newl;
-	listsize += 1;
-}
-template<typename T> void listshorten(T*& list, int newsize)
-{
-	T* newl = new T[newsize];
-	memcpy(newl, list, newsize*sizeof(T));
-	delete list;
-	list = newl;
-}
-template<typename T> void listremove(T*& list, int& listsize, int listpos)
-{
-	listsize--;
-	T* newl = new T[listsize];
-	memcpy(newl, list, listpos*sizeof(T));
-	memcpy(&newl[listpos], &list[listpos+1], (listsize-listpos)*sizeof(T));
-	delete list;
-	list = newl;
-}
+
 
 
 int global_innov = 100;

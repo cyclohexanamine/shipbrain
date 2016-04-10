@@ -69,9 +69,48 @@ extern std::uniform_real_distribution<double> distribution;
 float randfloat();
 int randint(int min, int max);
 
-template<typename T> void listappend(T*& list, int& listsize, T item);
-template<typename T> void listshorten(T*& list, int newsize);
-template<typename T> void listremove(T*& list, int& listsize, int listpos);
+template<typename T> void listappend(T*& list, int& listsize, T item)
+{
+	T* newl = new T[listsize+1];
+	if (list)
+	{
+		memcpy(newl, list, listsize*sizeof(T));
+		delete list;
+	}
+	newl[listsize] = item;
+	list = newl;
+	listsize += 1;
+}
+template<typename T> void listshorten(T*& list, int newsize)
+{
+	T* newl = new T[newsize];
+	memcpy(newl, list, newsize*sizeof(T));
+	delete list;
+	list = newl;
+}
+template<typename T> void listremove(T*& list, int& listsize, int listpos)
+{
+	listsize--;
+	T* newl = new T[listsize];
+	memcpy(newl, list, listpos*sizeof(T));
+	memcpy(&newl[listpos], &list[listpos+1], (listsize-listpos)*sizeof(T));
+	delete list;
+	list = newl;
+}
+template<typename T> void listremoveduplicates(T*& list, int& listsize)
+{
+	for (int i = listsize-1; i >= 0; i--)
+	{
+		for (int j = i-1; j >= 0; j--)
+		{
+			if (list[i] == list[j])
+			{
+				listremove(list, listsize, i);
+				break;
+			}
+		}
+	}
+}
 
 extern int global_innov;
 int newinnov();

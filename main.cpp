@@ -232,6 +232,7 @@ class Shell
 };
 
 
+Shell** rshell; int nrshell;
 
 static cpBool scorecollision(cpArbiter *arb, cpSpace *space, void *data)
 {
@@ -240,13 +241,22 @@ static cpBool scorecollision(cpArbiter *arb, cpSpace *space, void *data)
 	cpArbiterGetShapes(arb, a, b);
 	
 	Ship* s = 0;
+	Shell* sh = 0;
 	if (cpShapeGetCollisionType(*a) == 1)
+	{
 		s = (Ship*)cpShapeGetUserData(*a);
+		sh = (Shell*)cpShapeGetUserData(*b);
+	}
 	else
+	{
 		s = (Ship*)cpShapeGetUserData(*b);
+		sh = (Shell*)cpShapeGetUserData(*a);
+	}
 	
-	// s->score -= 1;
+	s->score -= 1;
 	s->target->score += 2;
+	
+	listappend<Shell*>(rshell, nrshell, sh);
 	
 	return cpTrue;
 }
@@ -256,6 +266,25 @@ static cpBool scorecollision(cpArbiter *arb, cpSpace *space, void *data)
 class Phys
 {
 	public:
+	
+	~Phys()
+	{
+		for (std::vector<Ship*>::iterator it = ship_list.begin(); it != ship_list.end(); ++it)
+		{
+			cpSpaceRemoveShape(space, (*it)->cpshape);
+			cpSpaceRemoveBody(space, (*it)->body);
+			delete *it;
+		}
+		ship_list.clear();
+		for (std::vector<Shell*>::iterator it = shell_list.begin(); it != shell_list.end(); ++it)
+		{
+			cpSpaceRemoveShape(space, (*it)->cpshape);
+			cpSpaceRemoveBody(space, (*it)->body);
+			delete *it;
+		}
+		shell_list.clear();
+		cpSpaceFree(space);
+	}
 	
 	std::vector<Ship*> ship_list;
 	std::vector<Shell*> shell_list;
@@ -270,6 +299,9 @@ class Phys
 	int maininit()
 	{
 		ship_list.clear();
+		shell_list.clear();
+		rshell = 0; nrshell = 0;
+		
 		space = cpSpaceNew();
 		last_time_updated = gtime();
 		dt = 1.;
@@ -327,6 +359,7 @@ class Phys
 		}
 		
 		cpSpaceStep(space, dt);
+		removeshells();
 		
 		return 0;
 	}	
@@ -345,7 +378,33 @@ class Phys
 		}
 		
 		cpSpaceStep(space, dt);
+		removeshells();
 		
+		return 0;
+	}
+	
+	int removeshells()
+	{
+		listremoveduplicates(rshell, nrshell);
+		
+		for (int i = 0; i < nrshell; i++)
+		{
+			cpSpaceRemoveShape(space, rshell[i]->cpshape);
+			cpSpaceRemoveBody(space, rshell[i]->body);
+			for (std::vector<Shell*>::iterator it = shell_list.begin(); it != shell_list.end(); ++it)
+			{
+				if (*it == rshell[i])
+				{
+					shell_list.erase(it);
+					break;
+				}
+			}
+			delete rshell[i];
+		}
+		nrshell = 0;
+		if (rshell) delete rshell; rshell = 0;
+
+
 		return 0;
 	}
 	
@@ -655,18 +714,23 @@ int openwindow(Genome* g1=0, Genome* g2=0)
 }
 
 
-int main()
+int main(int argc, char* argv[])
 {
 	afout.open("out.txt");
 	wclock = new sf::Clock;
-	DeleteDirectory("arch");
-	
-	
+
+	bool record = true;
 	bool init_selection = true;
+	
+	if (argc > 1)
+	{
+		if (strcmp(argv[1], "norecord")==0) record = false;
+		else init_selection = false;
+	}
 	
 	if (init_selection)
 	{
-		
+		if (record) DeleteDirectory("arch");
 		int ngenerations = 100;
 		
 		int ngs = 2;
@@ -685,19 +749,22 @@ int main()
 			{
 				std::cout << pop->species[i]->topfitness << " " << pop->species[i]->avgfitness << " " << pop->species[i]->staleness << " " << pop->species[i]->ngenomes << std::endl;
 				
-				char* str = new char[30];
-				for (int j = 0; j < 3; j++)
+				if (record)
 				{
-					if (pop->species[i]->ngenomes <= j) break;
-					CreateDirectory("arch", NULL);
-					sprintf(str, "arch\\gen%d", gen);
-					CreateDirectory(str, NULL);
-					sprintf(str, "arch\\gen%d\\species%d", gen, i);
-					CreateDirectory(str, NULL);
-					sprintf(str, "arch\\gen%d\\species%d\\mind%d.mind", gen, i, j);
-					writegenome(pop->species[i]->genomes[j], str);
+					char* str = new char[30];
+					for (int j = 0; j < 3; j++)
+					{
+						if (pop->species[i]->ngenomes <= j) break;
+						CreateDirectory("arch", NULL);
+						sprintf(str, "arch\\gen%d", gen);
+						CreateDirectory(str, NULL);
+						sprintf(str, "arch\\gen%d\\species%d", gen, i);
+						CreateDirectory(str, NULL);
+						sprintf(str, "arch\\gen%d\\species%d\\mind%d.mind", gen, i, j);
+						writegenome(pop->species[i]->genomes[j], str);
+					}
+					delete str;
 				}
-				delete str;
 			}				
 			
 			pop->nextgen();
@@ -707,9 +774,13 @@ int main()
 	}
 	
 	else
-	{		
-		Genome* g1 = readgenome("mind0.mind");
-		Genome* g2 = readgenome("shipmind.mind");
+	{
+		Genome* g1 = readgenome(argv[1]);
+		Genome* g2 = 0;
+		if (argc > 2)
+			g2 = readgenome(argv[2]);
+		else
+			g2 = readgenome("shipmind.mind");
 		
 		return openwindow(g1, g2);
 	}
